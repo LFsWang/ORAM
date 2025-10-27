@@ -18,9 +18,10 @@ public:
 
     size_t getZ(size_t layer) {
         // by paper, Z >= 4 to make the fail rate is negligible.
-        if (layer == L)
-            return 3;   //Zx
-        return max(size_t(L *2 ) / (1 << (layer + 2)), size_t(3 + layer % 2));   //Zy
+        if (layer == L) return 3;                      // leaf: Z_leaf = 3
+        auto a = (L*2) / (1ULL << (layer + 2));        // ≈ floor(L / 2^(layer+1))
+        auto b = 3 + (layer % 2);                      // 3,4,3,4,3,4,...
+        return std::max<size_t>(a, b);
     }
 
     void init(size_t _N) override {
