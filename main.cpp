@@ -45,7 +45,7 @@ public:
         UniformN = std::uniform_int_distribution<size_t>(0, (1ULL << L) - 1);
 
         /* Some Important Parameters */
-        auto leaves = (1ULL << L);
+        // auto leaves = (1ULL << L);
 
         unsigned long long Stor_variant = 0;
         for (size_t layer = 0; layer <= L; ++layer) {
@@ -61,12 +61,16 @@ public:
         }
         BW_blocks <<= 1;
 
+        auto BW_uniform5 = (L + 1) * 2 * 5;
+
         spdlog::info("Init NonRecursivePathORAM with N = {}, L = {}, TreeSize = {}", N, L, M.size());
         spdlog::info("Total Server Storage (ours) = {} blocks", Stor_variant);
         spdlog::info("Total Server Storage (uniform Z=5) = {} blocks", Stor_uniform5);
         spdlog::info("Storage ratio (uniform/ours) = {:.4f}x", double(Stor_uniform5) / double(Stor_variant));
         spdlog::info("Storage saving (ours vs uniform) = {:.2f}%", 100.0 * (double(Stor_uniform5 - Stor_variant) / double(Stor_uniform5)));
         spdlog::info("Theoretical Bandwidth per access (ours) = {} blocks", BW_blocks);
+        spdlog::info("Theoretical Bandwidth per access (uniform Z=5) = {} blocks", BW_uniform5);
+        spdlog::info("Bandwidth saving (ours vs uniform) = {:.2f}%", 100.0 * (double(BW_uniform5 - BW_blocks) / double(BW_uniform5)));
         // spdlog::info("DataT size = {} bytes", sizeof(DataT));
     }
 
