@@ -19,9 +19,9 @@ public:
     size_t getZ(size_t layer) {
         // by paper, Z >= 4 to make the fail rate is negligible.
         if (layer == L)
-            return 4;   //Zx
-        return 5;       //Zy
-    } 
+            return 3;   //Zx
+        return max(size_t(L *2 ) / (1 << (layer + 2)), size_t(3 + layer % 2));   //Zy
+    }
 
     void init(size_t _N) override {
         N = _N;
@@ -44,10 +44,29 @@ public:
         fill(Pos.begin(), Pos.end(), npos);
         UniformN = std::uniform_int_distribution<size_t>(0, (1ULL << L) - 1);
 
-        spdlog::info("Init NonRecursivePathORAM with N={}, L={}, TreeSize={}", N,L, M.size());
-        spdlog::info("Z_internal={}, Z_leaf={}", getZ(0), getZ(L));
-        spdlog::info("Total Server Storage = {} blocks", (1ULL << L) * getZ(L) + ( (1ULL << L) - 1 ) * getZ(0));
-        spdlog::info("Theoretical Bandwidth per access = {} blocks", (getZ(0) * L + getZ(L)) << 1);
+        /* Some Important Parameters */
+        auto leaves = (1ULL << L);
+
+        unsigned long long Stor_variant = 0;
+        for (size_t layer = 0; layer <= L; ++layer) {
+            auto nodes = (layer == L) ? (1ULL << L) : (1ULL << layer);
+            Stor_variant += nodes * getZ(layer);
+        }
+
+        auto Stor_uniform5 = ((1ULL << (L + 1)) - 1) * 5ULL;
+
+        unsigned long long BW_blocks = 0;
+        for (size_t layer = 0; layer <= L; ++layer) {
+            BW_blocks += getZ(layer);
+        }
+        BW_blocks <<= 1;
+
+        spdlog::info("Init NonRecursivePathORAM with N = {}, L = {}, TreeSize = {}", N, L, M.size());
+        spdlog::info("Total Server Storage (ours) = {} blocks", Stor_variant);
+        spdlog::info("Total Server Storage (uniform Z=5) = {} blocks", Stor_uniform5);
+        spdlog::info("Storage ratio (uniform/ours) = {:.4f}x", double(Stor_uniform5) / double(Stor_variant));
+        spdlog::info("Storage saving (ours vs uniform) = {:.2f}%", 100.0 * (double(Stor_uniform5 - Stor_variant) / double(Stor_uniform5)));
+        spdlog::info("Theoretical Bandwidth per access (ours) = {} blocks", BW_blocks);
         // spdlog::info("DataT size = {} bytes", sizeof(DataT));
     }
 
@@ -188,7 +207,7 @@ bool CheckORAM(ORAM<long long> *inst, size_t N, int Rounds) {
         } else {
             auto Ind = UniformN(mt64);
             if (Anwser.read(Ind) != inst->read(Ind)) {
-                spdlog::error("GG, value different!");
+                spdlog::error("GG, value different!"); // LOL
                 return false;
             }
         }
