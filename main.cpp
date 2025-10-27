@@ -19,8 +19,8 @@ public:
     size_t getZ(size_t layer) {
         // by paper, Z >= 4 to make the fail rate is negligible.
         if (layer == L)
-            return 3;   //Zx
-        return max(size_t(L * 2) / (1 << (layer + 2)), size_t(3 + layer % 2));       //Zy
+            return 4;   //Zx
+        return 5;       //Zy
     } 
 
     void init(size_t _N) override {
@@ -37,12 +37,12 @@ public:
 
         // Tree with 2**L leaf, and use 1 base
         M.clear();
-        M.resize(2 * (1 << L));        
+        M.resize(2 * (1ULL << L));        
 
         //mt.seed(7122);
         Pos.resize(N);
         fill(Pos.begin(), Pos.end(), npos);
-        UniformN = std::uniform_int_distribution<size_t>(0, (1 << L) - 1);
+        UniformN = std::uniform_int_distribution<size_t>(0, (1ULL << L) - 1);
 
         spdlog::info("Init NonRecursivePathORAM with N={}, L={}, TreeSize={}", N,L, M.size());
         spdlog::info("Z_internal={}, Z_leaf={}", getZ(0), getZ(L));
@@ -57,7 +57,7 @@ public:
         }
 
         DataT Ret;
-        Access(index, false, Ret);
+        Access(index, false, Ret);  // false => this is a read
         return Ret;
     }
 
@@ -65,7 +65,7 @@ public:
         if (index >= N) [[unlikely]] {
             spdlog::error("PlainMemory read overflow read: {} ! ", index);
         }
-        Access(index, true, Val);
+        Access(index, true, Val);  // true => this is a write
     }
 
     void dump() {
