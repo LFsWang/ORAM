@@ -1,43 +1,7 @@
-#include "spdlog/spdlog.h"
-
 #include <bits/stdc++.h>
-
+#include "ORAM.h"
 
 using namespace std;
-
-template<typename DataT>
-class ORAM {
-public:
-    virtual void init(size_t N) = 0; /* Create a memory [0: N-1] */
-    virtual DataT read(size_t index) = 0;
-    virtual void write(size_t index, DataT Val) = 0;
-};
-
-// This is not a ORAM, it use for test the correctness
-template<typename DataT>
-class PlainMemory: public ORAM<DataT> {
-public:
-    void init(size_t _N) override {
-        N = _N;
-        M.resize(N);
-    }
-    DataT read(size_t index) override {
-        if (index >= N) [[unlikely]] {
-            spdlog::error("PlainMemory read overflow read: {} ! ", index);
-        }
-        return M[index];
-    }
-    void write(size_t index, DataT Val) override {
-        if (index >= N) [[unlikely]] {
-            spdlog::error("PlainMemory read overflow read: {} ! ", index);
-        }
-        M[index] = Val;
-    }
-private:
-    std::vector<DataT> M;
-    size_t N;
-};
-
 
 std::mt19937_64 mt;
 template<typename DataT>
@@ -53,10 +17,10 @@ public:
     };
 
     size_t getZ(size_t layer) {
-        // by pepar, Z >= 4 to make the fail rate is negligible.
+        // by paper, Z >= 4 to make the fail rate is negligible.
         if (layer == L)
             return 3;   //Zx
-        return 6;       //Zy
+        return max(size_t(L * 2) / (1 << (layer + 2)), size_t(3 + layer % 2));       //Zy
     } 
 
     void init(size_t _N) override {
@@ -80,8 +44,11 @@ public:
         fill(Pos.begin(), Pos.end(), npos);
         UniformN = std::uniform_int_distribution<size_t>(0, (1 << L) - 1);
 
-        spdlog::info("Init NonRecursivePathORAM with N={}, L={}, TreeSize={}, B={}", N,L, M.size(), sizeof(DataT));
-        spdlog::info(" Z(0)={}, Z(L)={}", getZ(0), getZ(L));
+        spdlog::info("Init NonRecursivePathORAM with N={}, L={}, TreeSize={}", N,L, M.size());
+        spdlog::info("Z_internal={}, Z_leaf={}", getZ(0), getZ(L));
+        spdlog::info("Total Server Storage = {} blocks", (1ULL << L) * getZ(L) + ( (1ULL << L) - 1 ) * getZ(0));
+        spdlog::info("Theoretical Bandwidth per access = {} blocks", (getZ(0) * L + getZ(L)) << 1);
+        // spdlog::info("DataT size = {} bytes", sizeof(DataT));
     }
 
     DataT read(size_t index) override {
@@ -177,7 +144,7 @@ private:
             TreeId >>= 1;
         }
 
-        // In parer, the Stash is 0 at almost time.
+        // In paper, the Stash is 0 at almost time.
         // Let see some large case
         static size_t lastMax = 0;
         static size_t cnt = 0;
