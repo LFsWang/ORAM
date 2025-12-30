@@ -1,3 +1,5 @@
 main.exe
+main-omp.exe
 .vscode/
-logs/*.log
+
+logs/**/*.log

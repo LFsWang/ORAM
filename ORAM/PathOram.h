@@ -2,14 +2,26 @@
 
 #include "Base.h"
 #include <bitset>
+#include <functional>
+
+[[maybe_unused]] static std::size_t Zuniform5(std::size_t) {
+    return 5;
+}
 
 template <typename DataT>
 class NonRecursivePathORAM : public ORAM<DataT> {
+  public:
+    using Zfunction = std::function<std::size_t(size_t)>;
+    using ReportFunc = std::function<bool(NonRecursivePathORAM<DataT> &)>;
     using ORAM<DataT>::Cnt;
+
     static const size_t npos = size_t(-1);
 
-  public:
+    Zfunction getZ = Zuniform5;
+    ReportFunc reportFunc = nullptr;
+
     NonRecursivePathORAM(TestEnvContent &Cnt) : ORAM<DataT>(Cnt) {};
+    NonRecursivePathORAM(TestEnvContent &Cnt, Zfunction getZ, ReportFunc reportFunc) : ORAM<DataT>(Cnt), getZ(getZ), reportFunc(reportFunc) {};
 
     struct InnerData {
         size_t Index;
@@ -19,14 +31,14 @@ class NonRecursivePathORAM : public ORAM<DataT> {
         InnerData(size_t Index, DataT D) : Index(Index), D(D) {}
     };
 
-    size_t getZ(size_t layer) {
-        // by paper, Z >= 4 to make the fail rate is negligible.
-        if (layer == L)
-            return 3;                             // leaf: Z_leaf = 3
-        auto a = (L * 2) / (1ULL << (layer + 2)); // ≈ floor(L / 2^(layer+1))
-        auto b = 3 + (layer % 2);                 // 3,4,3,4,3,4,...
-        return std::max<size_t>(a, b);
-    }
+    // size_t getZ(size_t layer) {
+    //     // by paper, Z >= 4 to make the fail rate is negligible.
+    //     if (layer == L)
+    //         return 3;                             // leaf: Z_leaf = 3
+    //     auto a = (L * 2) / (1ULL << (layer + 2)); // ≈ floor(L / 2^(layer+1))
+    //     auto b = 3 + (layer % 2);                 // 3,4,3,4,3,4,...
+    //     return std::max<size_t>(a, b);
+    // }
 
     void init(size_t _N) override {
         lastMaxStashSize = 0;
@@ -117,14 +129,17 @@ class NonRecursivePathORAM : public ORAM<DataT> {
             spdlog::info("       ind {}, val", id, v);
     }
 
-    void report() override {
-        if (Stash.size() > lastMaxStashSize) {
-            lastMaxStashSize = Stash.size();
-            Cnt.flog->info("Stash size = {:>5}, opnum = {}", Stash.size(), Ops);
+    bool report() override {
+        if (reportFunc != nullptr) {
+            return reportFunc(*this);
         }
+        return true;
     }
 
-  private:
+    std::size_t stash_size() override {
+        return Stash.size();
+    }
+
     void Access(size_t Idx, bool NeedWrite, DataT &Val) {
         size_t Path = Pos[Idx];
         if (Path == npos) [[unlikely]] {
@@ -181,11 +196,11 @@ class NonRecursivePathORAM : public ORAM<DataT> {
 
         // In paper, the Stash is 0 at almost time.
         // Let see some large case
-        if (Stash.size() > lastMaxStashSize) {
-            // It will updated by report
-            // lastMaxStashSize = Stash.size();
-            spdlog::trace("Stash size = {:>5}, opnum = {}", Stash.size(), Ops);
-        }
+        // if (Stash.size() > lastMaxStashSize) {
+        //     // It will updated by report
+        //     // lastMaxStashSize = Stash.size();
+        //     spdlog::trace("Stash size = {:>5}, opnum = {}", Stash.size(), Ops);
+        // }
     }
 
     std::uniform_int_distribution<size_t> UniformN;

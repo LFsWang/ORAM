@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "Win32",
+            "name": "linux",
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/3rd_lib/spdlog-1.15.3/include"
@@ -11,7 +11,7 @@
                 "UNICODE",
                 "_UNICODE"
             ],
-            "intelliSenseMode": "windows-gcc-x64",
+            "intelliSenseMode": "linux-gcc-x64",
             "cppStandard": "c++20",
             "compilerArgs": [
                 "-Wall -Wextra"
