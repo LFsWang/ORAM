@@ -111,7 +111,7 @@ void Test01() {
         Cnt.mt.seed(0);
 
         Cnt.ReportStashSizes.clear();
-        std::string logfilename = std::format("logs/Test1/NPathORAM_{}.log", name);
+        std::string logfilename =  "logs/Test1/NPathORAM_" + name + ".log";  //std::format("logs/Test1/NPathORAM_{}.log", name);
         Cnt.flog = spdlog::basic_logger_mt(logfilename, logfilename);
 
         NonRecursivePathORAM<uint32_t> NPathORAM(Cnt, getZ, report);
