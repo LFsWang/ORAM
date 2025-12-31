@@ -5,6 +5,8 @@
 #include <random>
 
 struct TestEnvContent {
-    std::mt19937_64 mt64;
+    std::mt19937 mt;
     std::shared_ptr<spdlog::logger> flog;
+
+    std::vector<uint64_t> ReportStashSizes;
 };

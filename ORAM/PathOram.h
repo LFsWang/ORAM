@@ -3,6 +3,7 @@
 #include "Base.h"
 #include <bitset>
 #include <functional>
+#include <list>
 
 [[maybe_unused]] static std::size_t Zuniform5(std::size_t) {
     return 5;
@@ -11,11 +12,11 @@
 template <typename DataT>
 class NonRecursivePathORAM : public ORAM<DataT> {
   public:
-    using Zfunction = std::function<std::size_t(size_t)>;
-    using ReportFunc = std::function<bool(NonRecursivePathORAM<DataT> &)>;
+    using Zfunction = std::size_t (*)(size_t);
+    using ReportFunc = void (*)(NonRecursivePathORAM<DataT> &);
     using ORAM<DataT>::Cnt;
 
-    static const size_t npos = size_t(-1);
+    static constexpr size_t npos = size_t(-1);
 
     Zfunction getZ = Zuniform5;
     ReportFunc reportFunc = nullptr;
@@ -129,11 +130,10 @@ class NonRecursivePathORAM : public ORAM<DataT> {
             spdlog::info("       ind {}, val", id, v);
     }
 
-    bool report() override {
+    void report() override {
         if (reportFunc != nullptr) {
-            return reportFunc(*this);
+            reportFunc(*this);
         }
-        return true;
     }
 
     std::size_t stash_size() override {
@@ -144,10 +144,10 @@ class NonRecursivePathORAM : public ORAM<DataT> {
         size_t Path = Pos[Idx];
         if (Path == npos) [[unlikely]] {
             // First time meet
-            Path = UniformN(Cnt.mt64);
+            Path = UniformN(Cnt.mt);
             Stash.emplace_back(Idx, 0);
         }
-        Pos[Idx] = UniformN(Cnt.mt64);
+        Pos[Idx] = UniformN(Cnt.mt);
 
         std::bitset<64> PathBit(Path);
         std::size_t TreeId = 1;
