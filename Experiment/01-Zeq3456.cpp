@@ -36,6 +36,7 @@ static bool CheckORAM(ORAM<uint32_t> *TestOram, size_t N, TestEnvContent &Cnt) {
         TestOram->write(i, Cnt.mt());
     }
     spdlog::info("Step 2, random read/write warming-up for {} rounds", Billion);
+    Cnt.ReportStashSizes.clear(); // reset
     for (size_t i = 0, j = 0; i < Billion; ++i, ++j) {
         auto Ind = UniformN(Cnt.mt);
         TestOram->read(Ind);
@@ -91,11 +92,8 @@ static bool CheckORAM(ORAM<uint32_t> *TestOram, size_t N, TestEnvContent &Cnt) {
     return true;
 }
 
-
 void Test01() {
     spdlog::info("Start Test01");
-
-    
 
     std::tuple<std::string, NonRecursivePathORAM<uint32_t>::Zfunction> Zfuncs[] = {
         std::make_tuple("Uniform6", Z6uniform),
@@ -111,7 +109,7 @@ void Test01() {
         Cnt.mt.seed(0);
 
         Cnt.ReportStashSizes.clear();
-        std::string logfilename =  "logs/Test1/NPathORAM_" + name + ".log";  //std::format("logs/Test1/NPathORAM_{}.log", name);
+        std::string logfilename = "logs/Test1/NPathORAM_" + name + ".log"; // std::format("logs/Test1/NPathORAM_{}.log", name);
         Cnt.flog = spdlog::basic_logger_mt(logfilename, logfilename);
 
         NonRecursivePathORAM<uint32_t> NPathORAM(Cnt, getZ, report);
@@ -124,5 +122,4 @@ void Test01() {
             Cnt.flog->info("  Stash size {}: {} times", i, Cnt.ReportStashSizes[i]);
         }
     }
-    
 }

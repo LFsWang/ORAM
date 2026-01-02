@@ -5,6 +5,6 @@ CXXOPT=-O3
 
 all:
 	g++ $(CXXFILES) $(CXXFLAGS) $(CXXOPT) -o main.exe
-	# g++ $(CXXFILES) $(CXXFLAGS) $(CXXOPT) -fopenmp -o main-omp.exe
+	g++ $(CXXFILES) $(CXXFLAGS) $(CXXOPT) -fopenmp -o main-omp.exe
 	# g++ $(CXXFILES) $(CXXFLAGS) -pg -g -o main-pg.exe
 	# ./main.exe

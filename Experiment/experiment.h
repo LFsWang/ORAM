@@ -7,5 +7,6 @@
 
 void Test00();
 void Test01();
+void Test02();
 
 void RunAllTests();
