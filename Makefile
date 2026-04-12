@@ -1,4 +1,4 @@
-CXXFLAGS=-std=c++23 -Wall -Wextra -I./3rd_lib/spdlog-1.15.3/include
+CXXFLAGS=-std=c++20 -Wall -Wextra -I./3rd_lib/spdlog-1.15.3/include
 CXXFLAGS+=-DPASSCHECK
 CXXFILES=main.cpp Experiment/*.cpp
 CXXOPT=-O3

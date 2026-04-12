@@ -103,10 +103,7 @@ static bool CheckORAM(ORAM<uint32_t> *TestOram, size_t N, TestEnvContent &Cnt) {
     }
     Cnt.flog->flush();
 
-    spdlog::debug("short cut after 1 billion ops");
-    return true; // For debugging purpose, skip the long test
-
-    spdlog::info("Step 3, start the real test for {} rounds", 250 * Billion);
+    spdlog::info("Step 3, start the real test for {} rounds", 10 * Billion);
     Cnt.ReportStashSizes.clear(); // reset
 
     // round-robin pattern

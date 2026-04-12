@@ -1,15 +1,15 @@
 import csv
 import matplotlib
-# 設定後端，支援遠端無螢幕執行
-matplotlib.use('Agg') 
+# Use Agg backend for headless server environments
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
 def loadCSV(filename):
     """
-    讀取 CSV 檔案。
-    格式: Stash_Size, opnum1, opnum2, ...
-    回傳: 一個字典 {size: [opnum_list]}
+    Read a CSV file.
+    Format: Stash_Size, opnum1, opnum2, ...
+    Returns: a dict {size: [opnum_list]}
     """
     data = {}
     try:
@@ -22,22 +22,21 @@ def loadCSV(filename):
                     opnums = [int(x) for x in row[1:]]
                     data[size] = opnums
                 except ValueError:
-                    continue 
+                    continue
         return data
     except FileNotFoundError:
-        print(f"錯誤: 找不到檔案 {filename}")
+        print(f"Error: file not found: {filename}")
         return {}
 
 def analysisMany(dataset_list, output_img='swapped_axes_result.png'):
     """
-    分析並比較多組資料 (XY軸互換版)。
-    X軸: Opnum (Log Scale)
-    Y軸: Stash Size
+    Analyze and compare multiple datasets (axes swapped).
+    X-axis: Opnum (Log Scale)
+    Y-axis: Stash Size
     """
-    
+
     plt.figure(figsize=(10, 8))
-    
-    # --- 修改點 1: 設定 X 軸為對數座標 ---
+
     plt.xscale('log')
 
     for entry in dataset_list:
@@ -48,11 +47,9 @@ def analysisMany(dataset_list, output_img='swapped_axes_result.png'):
         if not data:
             continue
 
-        # 準備數據
-        mean_size = []   # 這是原本的 X (Size)
-        mean_opnum = []  # 這是原本的 Y (Opnum)
-        
-        # 擬合用原始數據
+        mean_size = []
+        mean_opnum = []
+
         fit_size_raw = []
         fit_opnum_raw = []
 
@@ -63,68 +60,57 @@ def analysisMany(dataset_list, output_img='swapped_axes_result.png'):
             for op in opnums:
                 fit_size_raw.append(size)
                 fit_opnum_raw.append(op)
-            
+
             if opnums:
                 avg = np.mean(opnums)
                 mean_size.append(size)
                 mean_opnum.append(avg)
 
-        # --- 修改點 2: 繪製平均點 (座標互換) ---
-        # 傳入參數順序改為 (Opnum, Size) -> (X, Y)
+        # Plot average points (swapped axes: X=Opnum, Y=Size)
         plt.scatter(mean_opnum, mean_size, color=color, marker='o', s=60, label=f"{name} (Avg)")
 
-        # --- 修改點 3: 繪製擬合直線 (計算邏輯不變，繪圖互換) ---
+        # Plot fitted line (math model: log(Opnum) = a * Size + b)
         if len(fit_size_raw) > 1:
             try:
-                # 數學模型依然是: Opnum 隨著 Size 指數成長
-                # log(Opnum) = a * Size + b
                 log_opnum = np.log10(fit_opnum_raw)
                 slope, intercept = np.polyfit(fit_size_raw, log_opnum, 1)
-                
-                # 產生擬合線的點 (根據 Size 的範圍)
+
                 line_size = np.linspace(min(fit_size_raw), max(fit_size_raw), 100)
-                
-                # 算出對應的 Opnum
+
                 line_opnum_log = slope * line_size + intercept
                 line_opnum = 10 ** line_opnum_log
-                
-                # 繪圖時互換: X=Opnum, Y=Size
+
+                # Swapped axes: X=Opnum, Y=Size
                 plt.plot(line_opnum, line_size, color=color, linestyle='--', linewidth=2, label=f"{name} (Fit)")
             except Exception as e:
-                print(f"擬合失敗: {e}")
+                print(f"Fitting failed: {e}")
 
-    # --- 圖表修飾 ---
     plt.title('Comparison: Opnum vs Stash Size (Axes Swapped)')
-    plt.xlabel('Opnum (Log Scale)') # X 軸標籤變更
-    plt.ylabel('Stash Size')        # Y 軸標籤變更
+    plt.xlabel('Opnum (Log Scale)')
+    plt.ylabel('Stash Size')
     plt.grid(True, which="both", ls="-", alpha=0.2)
     plt.legend()
     plt.tight_layout()
 
     plt.savefig(output_img, dpi=300)
-    print(f"圖表繪製完成，已儲存為: {output_img}")
+    print(f"Chart saved to: {output_img}")
     plt.close()
 
-# --- 使用範例 ---
+# --- Usage example ---
 if __name__ == "__main__":
-    # 這裡示範如何呼叫
-    
-    # 1. 讀取兩個不同的 CSV (假設你有 output1.csv 和 output2.csv)
-    # 為了示範，我們先讀取同一個檔案兩次，或者您可以換成真實的檔案
-    file1 = 'output.csv' 
-    file2 = 'result/Z6.csv' 
-    file3 = 'result/Z5.csv' 
-    file4 = 'result/Z4.csv' 
-    file5 = 'result/Z3.csv' 
-    
+    file1 = 'output.csv'
+    file2 = 'result/Z6.csv'
+    file3 = 'result/Z5.csv'
+    file4 = 'result/Z4.csv'
+    file5 = 'result/Z3.csv'
+
     data1 = loadCSV(file1)
     data2 = loadCSV(file2)
     data3 = loadCSV(file3)
     data4 = loadCSV(file4)
     data5 = loadCSV(file5)
 
-    # 2. 準備輸入結構
-    # 格式: [資料, 名稱, 顏色]
+    # Format: [data, name, color]
     datasets_to_plot = [
         [data1, "Experiment A", "blue"],
         [data2, "Experiment Z6", "#FF0000"],
@@ -133,5 +119,4 @@ if __name__ == "__main__":
         [data5, "Experiment Z3", "#000000"],
     ]
 
-    # 3. 執行分析
     analysisMany(datasets_to_plot, "multi_analysis.png")

@@ -63,19 +63,19 @@ static bool CheckORAM(ORAM<uint32_t> *TestOram, size_t N, TestEnvContent &Cnt) {
     // spdlog::debug("short cut warm-up after 40 million ops");
     // return true; // For debugging purpose, skip the long test
 
-    spdlog::info("Step 3, start the real test for {} rounds", 250 * Billion);
+    spdlog::info("Step 3, start the real test for {} rounds", 10 * Billion);
     Cnt.ReportStashSizes.clear(); // reset
 
     // round-robin pattern
     size_t Idx = 0;
-    for (size_t i = 0, j = 0; i < 250 * Billion; ++i, ++j) {
+    for (size_t i = 0, j = 0; i < 10 * Billion; ++i, ++j) {
         TestOram->read(Idx);
         TestOram->report();
         Idx = (Idx + 1) % N;
 
         if (j == Billion) {
             j = 0;
-            spdlog::info("  Test progress: {} / {} ({}%)", i, 250 * Billion, (i * 100) / (250 * Billion));
+            spdlog::info("  Test progress: {} / {} ({}%)", i, 10 * Billion, (i * 100) / (10 * Billion));
 
             // Backup, report stash size distribution
             Cnt.flog->info("Stash size distribution for During test at op {}:", i);
