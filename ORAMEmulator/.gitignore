@@ -1,0 +1,8 @@
+build/
+reproduced/
+artifact-output/
+main.exe
+main-omp.exe
+.vscode/
+
+logs/**/*.log

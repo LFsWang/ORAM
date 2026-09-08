@@ -1,8 +1,6 @@
-build/
-reproduced/
-artifact-output/
-main.exe
-main-omp.exe
-.vscode/
-
-logs/**/*.log
+# Generated builds and experiment outputs at any project level.
+**/build/
+**/artifact-output/
+**/reproduced/
+**/__pycache__/
+*.py[cod]
