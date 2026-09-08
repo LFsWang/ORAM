@@ -1,125 +1,107 @@
 #include "experiment.h"
 
-[[maybe_unused]] static size_t Z6uniform(std::size_t) {
-    return 6;
+#include <atomic>
+#include <filesystem>
+#include <string>
+#include <tuple>
+
+namespace {
+
+using PathORAM = NonRecursivePathORAM<uint32_t>;
+
+size_t Z6uniform(std::size_t) { return 6; }
+size_t Z5uniform(std::size_t) { return 5; }
+size_t Z4uniform(std::size_t) { return 4; }
+size_t Z3uniform(std::size_t) { return 3; }
+
+void Report(PathORAM &oram) {
+    auto &content = oram.Cnt;
+    if (oram.Stash.size() >= content.ReportStashSizes.size())
+        content.ReportStashSizes.resize(oram.Stash.size() + 1, 0);
+    content.ReportStashSizes[oram.Stash.size()]++;
 }
-[[maybe_unused]] static size_t Z5uniform(std::size_t) {
-    return 5;
-}
-[[maybe_unused]] static size_t Z4uniform(std::size_t) {
-    return 4;
-}
-[[maybe_unused]] static size_t Z3uniform(std::size_t) {
-    return 3;
-}
 
-static void report(NonRecursivePathORAM<uint32_t> &oram) {
-    auto &Cnt = oram.Cnt;
-    if (oram.Stash.size() >= Cnt.ReportStashSizes.size()) {
-        Cnt.ReportStashSizes.resize(oram.Stash.size() + 1, 0);
-    }
-    Cnt.ReportStashSizes[oram.Stash.size()]++;
-}
+bool RunVariant(PathORAM::Zfunction getZ, const std::string &dataset,
+                const std::string &variant, const ExperimentConfig &config) {
+    const auto outputDir = std::filesystem::path(config.output_root) / dataset;
+    std::filesystem::create_directories(outputDir);
+    const auto logPath = outputDir / (variant + ".log");
+    const std::string loggerName = dataset + ":" + variant;
 
-static bool CheckORAM(ORAM<uint32_t> *TestOram, size_t N, TestEnvContent &Cnt) {
-    spdlog::info("Start ORAM Speed");
-    TestOram->init(N);
+    TestEnvContent content;
+    content.mt.seed(config.seed);
+    content.flog = spdlog::basic_logger_mt(loggerName, logPath.string(), true);
+    content.flog->info(
+        "metadata dataset={} variant={} N={} seed={} warmup_rounds={} test_rounds={}",
+        dataset, variant, config.memory_size, config.seed,
+        config.warmup_rounds, config.test_rounds);
 
-    std::uniform_int_distribution<size_t> UniformN(0, N - 1);
-    std::bernoulli_distribution pWrite(0.5);
+    PathORAM oram(content, getZ, Report);
+    oram.init(config.memory_size);
+    std::uniform_int_distribution<size_t> uniformIndex(0, config.memory_size - 1);
 
-    auto start_time = std::chrono::high_resolution_clock::now();
-    constexpr size_t Billion = 1000000000;
+    spdlog::info("{} / {}: initialize {} blocks", dataset, variant,
+                 config.memory_size);
+    for (size_t i = 0; i < config.memory_size; ++i)
+        oram.write(i, content.mt());
 
-    spdlog::info("Step 1, insert index 0 to N-1");
-    for (size_t i = 0; i < N; ++i) {
-        TestOram->write(i, Cnt.mt());
-    }
-    spdlog::info("Step 2, random read/write warming-up for {} rounds", Billion);
-    Cnt.ReportStashSizes.clear(); // reset
-    for (size_t i = 0, j = 0; i < Billion; ++i, ++j) {
-        auto Ind = UniformN(Cnt.mt);
-        TestOram->read(Ind);
-        TestOram->report();
-
-        if (j == 10000000) {
-            j = 0;
-            spdlog::info("  Warm-up progress: {} / {} ({}%)", i, Billion, (i * 100) / Billion);
-        }
-
-        // if (i > 40000000) { // For debugging purpose, skip the long test
-        //     spdlog::debug("short cut warm-up after 40 million ops");
-        //     break;
-        // }
-    }
-
-    // Backup, report stash size distribution
-    Cnt.flog->info("Stash size distribution for During warm-up:");
-    for (size_t i = 0; i < Cnt.ReportStashSizes.size(); ++i) {
-        Cnt.flog->info("  Stash size {}: {} times", i, Cnt.ReportStashSizes[i]);
-    }
-    Cnt.flog->flush();
-
-    // spdlog::debug("short cut warm-up after 40 million ops");
-    // return true; // For debugging purpose, skip the long test
-
-    spdlog::info("Step 3, start the real test for {} rounds", 10 * Billion);
-    Cnt.ReportStashSizes.clear(); // reset
-
-    // round-robin pattern
-    size_t Idx = 0;
-    for (size_t i = 0, j = 0; i < 10 * Billion; ++i, ++j) {
-        TestOram->read(Idx);
-        TestOram->report();
-        Idx = (Idx + 1) % N;
-
-        if (j == Billion) {
-            j = 0;
-            spdlog::info("  Test progress: {} / {} ({}%)", i, 10 * Billion, (i * 100) / (10 * Billion));
-
-            // Backup, report stash size distribution
-            Cnt.flog->info("Stash size distribution for During test at op {}:", i);
-            for (int i = 0; i < (int)Cnt.ReportStashSizes.size(); ++i) {
-                Cnt.flog->info("  Stash size {}: {} times", i, Cnt.ReportStashSizes[i]);
-                Cnt.flog->flush();
-            }
-        }
+    spdlog::info("{} / {}: warm up for {} accesses", dataset, variant,
+                 config.warmup_rounds);
+    content.ReportStashSizes.clear();
+    for (std::uint64_t i = 0; i < config.warmup_rounds; ++i) {
+        oram.read(uniformIndex(content.mt));
+        oram.report();
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> second = end_time - start_time;
-    spdlog::info("Finish CheckORAM in {} seconds", second.count());
+    content.flog->info("Stash size distribution after warm-up:");
+    for (size_t i = 0; i < content.ReportStashSizes.size(); ++i)
+        content.flog->info("  Stash size {}: {} times", i,
+                           content.ReportStashSizes[i]);
+    content.flog->flush();
+
+    spdlog::info("{} / {}: measure {} round-robin accesses", dataset,
+                 variant, config.test_rounds);
+    content.ReportStashSizes.clear();
+    size_t index = 0;
+    for (std::uint64_t i = 0; i < config.test_rounds; ++i) {
+        oram.read(index);
+        oram.report();
+        index = (index + 1) % config.memory_size;
+    }
+
+    content.flog->info("Stash size distribution finished:");
+    for (size_t i = 0; i < content.ReportStashSizes.size(); ++i)
+        content.flog->info("  Stash size {}: {} times", i,
+                           content.ReportStashSizes[i]);
+    content.flog->flush();
+    spdlog::drop(loggerName);
+
+    spdlog::info("{} / {}: wrote {}", dataset, variant, logPath.string());
     return true;
 }
 
-void Test01() {
-    spdlog::info("Start Test01");
+} // namespace
 
-    std::tuple<std::string, NonRecursivePathORAM<uint32_t>::Zfunction> Zfuncs[] = {
-        std::make_tuple("Uniform6", Z6uniform),
-        std::make_tuple("Uniform5", Z5uniform),
-        std::make_tuple("Uniform4", Z4uniform),
-        std::make_tuple("Uniform3", Z3uniform),
+bool TestUniformZ(const ExperimentConfig &config) {
+    spdlog::info("Start dataset uniform-z");
+    const std::tuple<const char *, PathORAM::Zfunction> variants[] = {
+        {"z3", Z3uniform},
+        {"z4", Z4uniform},
+        {"z5", Z5uniform},
+        {"z6", Z6uniform},
     };
 
-    for (auto &[name, getZ] : Zfuncs) {
-        spdlog::info("Test Z function variant: {}", name);
+    std::atomic<bool> passed{true};
+    constexpr std::size_t variantCount = sizeof(variants) / sizeof(variants[0]);
 
-        TestEnvContent Cnt;
-        Cnt.mt.seed(0);
-
-        Cnt.ReportStashSizes.clear();
-        std::string logfilename = "logs/Test1/NPathORAM_" + name + ".log"; // std::format("logs/Test1/NPathORAM_{}.log", name);
-        Cnt.flog = spdlog::basic_logger_mt(logfilename, logfilename);
-
-        NonRecursivePathORAM<uint32_t> NPathORAM(Cnt, getZ, report);
-        if (!CheckORAM(&NPathORAM, 1 << 15, Cnt)) {
-            spdlog::error("Test1 with Z function {} failed!", name);
-        }
-
-        Cnt.flog->info("Stash size distribution for {}:", name);
-        for (int i = 0; i < (int)Cnt.ReportStashSizes.size(); ++i) {
-            Cnt.flog->info("  Stash size {}: {} times", i, Cnt.ReportStashSizes[i]);
-        }
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+    for (std::int64_t i = 0;
+         i < static_cast<std::int64_t>(variantCount); ++i) {
+        const auto &[name, getZ] = variants[static_cast<std::size_t>(i)];
+        if (!RunVariant(getZ, "uniform-z", name, config))
+            passed.store(false);
     }
+    return passed.load();
 }

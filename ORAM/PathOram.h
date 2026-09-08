@@ -87,10 +87,10 @@ class NonRecursivePathORAM : public ORAM<DataT> {
         spdlog::info("Total Server Storage (ours) = {} blocks", Stor_variant);
         spdlog::info("Total Server Storage (uniform Z=5) = {} blocks", Stor_uniform5);
         spdlog::info("Storage ratio (uniform/ours) = {:.4f}x", double(Stor_uniform5) / double(Stor_variant));
-        spdlog::info("Storage saving (ours vs uniform) = {:.2f}%", 100.0 * (double(Stor_uniform5 - Stor_variant) / double(Stor_uniform5)));
+        spdlog::info("Storage saving (ours vs uniform) = {:.2f}%", 100.0 * ((double(Stor_uniform5) - double(Stor_variant)) / double(Stor_uniform5)));
         spdlog::info("Theoretical Bandwidth per access (ours) = {} blocks", BW_blocks);
         spdlog::info("Theoretical Bandwidth per access (uniform Z=5) = {} blocks", BW_uniform5);
-        spdlog::info("Bandwidth saving (ours vs uniform) = {:.2f}%", 100.0 * (double(BW_uniform5 - BW_blocks) / double(BW_uniform5)));
+        spdlog::info("Bandwidth saving (ours vs uniform) = {:.2f}%", 100.0 * ((double(BW_uniform5) - double(BW_blocks)) / double(BW_uniform5)));
         // spdlog::info("DataT size = {} bytes", sizeof(DataT));
     }
 
@@ -100,7 +100,7 @@ class NonRecursivePathORAM : public ORAM<DataT> {
             spdlog::error("PlainMemory read overflow read: {} ! ", index);
         }
 
-        DataT Ret;
+        DataT Ret{};
         Access(index, false, Ret); // false => this is a read
         return Ret;
     }

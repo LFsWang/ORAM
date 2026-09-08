@@ -1,7 +1,7 @@
 #include "experiment.h"
 
 // Check the correctness of an ORAM implementation
-static bool CheckORAM(ORAM<uint32_t> *TestOram, size_t N, int64_t Rounds, TestEnvContent &Cnt) {
+static bool CheckORAM(ORAM<uint32_t> *TestOram, size_t N, std::uint64_t Rounds, TestEnvContent &Cnt) {
     spdlog::info("Start CheckORAM");
     PlainMemory<uint32_t> AnwserOram(Cnt);
 
@@ -33,7 +33,7 @@ static bool CheckORAM(ORAM<uint32_t> *TestOram, size_t N, int64_t Rounds, TestEn
     return true;
 }
 
-static bool CheckORAMSpeed(ORAM<uint32_t> *TestOram, size_t N, int64_t Rounds, TestEnvContent &Cnt) {
+static bool CheckORAMSpeed(ORAM<uint32_t> *TestOram, size_t N, std::uint64_t Rounds, TestEnvContent &Cnt) {
     spdlog::info("Start ORAM Speed");
     TestOram->init(N);
 
@@ -58,21 +58,26 @@ static bool CheckORAMSpeed(ORAM<uint32_t> *TestOram, size_t N, int64_t Rounds, T
     return true;
 }
 
-void Test00() {
-    spdlog::info("Start Test00");
+bool TestSelf(const ExperimentConfig &config) {
+    spdlog::info("Start self-test");
 
     TestEnvContent Cnt;
-    Cnt.mt.seed(0);
+    Cnt.mt.seed(config.seed);
+    bool passed = true;
     {
         NonRecursivePathORAM<uint32_t> NPathORAM(Cnt);
-        if (!CheckORAM(&NPathORAM, 1 << 15, 10'000'000, Cnt)) {
+        if (!CheckORAM(&NPathORAM, config.memory_size, config.correctness_rounds, Cnt)) {
             spdlog::error("NonRecursivePathORAM failed!");
+            passed = false;
         }
     }
     {
+        Cnt.mt.seed(config.seed);
         NonRecursivePathORAM<uint32_t> NPathORAM(Cnt);
-        if (!CheckORAMSpeed(&NPathORAM, 1 << 15, 10'000'000, Cnt)) {
+        if (!CheckORAMSpeed(&NPathORAM, config.memory_size, config.speed_rounds, Cnt)) {
             spdlog::error("NonRecursivePathORAM Speed test failed!");
+            passed = false;
         }
     }
+    return passed;
 }
