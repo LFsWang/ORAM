@@ -25,7 +25,7 @@ equivalent zero-based representation `0..N-1`.
 
 | Profile | Correctness operations | Warm-up per variant | Measurement per variant | Purpose                  |
 | ------- | ---------------------: | ------------------: | ----------------------: | ------------------------ |
-| `quick` |                100,000 |              10,000 |                 100,000 | Pipeline smoke test only |
+| `quick` |              1,000,000 |             100,000 |               1,000,000 | Pipeline smoke test only |
 | `full`  |             10,000,000 |       1,000,000,000 |          10,000,000,000 | Paper-scale evaluation   |
 
 The full profile can take hours or days. It is protected by a second explicit
@@ -127,7 +127,7 @@ non-zero status if a required log or final histogram is missing. It writes:
 - `reproduced/figZ5sL0-4_rate.png`
 - `reproduced/tableZ5x0-14_counts.png`
 
-Quick-profile figures will have short tails because they contain only 100,000
+Quick-profile figures will have short tails because they contain only 1,000,000
 measurements. They verify plumbing and labels, not agreement with the
 paper-scale distributions.
 
