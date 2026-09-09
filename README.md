@@ -1,147 +1,134 @@
-# ORAMEmulator artifact
+# Generalizing Path ORAM with Non-Uniform Bucket Sizes: Theoretical and Practical Improvements
 
-ORAMEmulator evaluates the stash-size distribution of non-recursive Path ORAM
-with a configurable bucket capacity `Z(layer)`. The artifact separates the
-simulation into three non-overlapping datasets and derives four paper figures
-from those datasets.
+There are two programs in this package:
 
-The reference paper images supplied by the authors are in `img/`. Full raw
-logs are not yet included; quick logs are intended only to validate the build
-and analysis pipeline, not the paper's statistical claims.
+- ORAMEmulator : A Path ORAM implementation for our experiments.
+- BoundFinder : A tool for enumerating the parameter `t` to find theoretical bounds.
 
-## Experimental setup
+## Quick start with Docker
 
-Both profiles use the paper's structural parameters:
+### Prerequisites
 
-- ORAM capacity: `N = 2^15 = 32768` blocks.
-- Tree height: `L' = ceil(log2(N)) - 1 = 14`, with layers numbered `0..14`.
-- Initialization: insert every logical block once.
-- Warm-up workload: uniformly random addresses.
-- Measurement workload: deterministic round-robin addresses.
-- PRNG seed: `0` by default and recorded in every log.
+From this repository root, build the image:
 
-The paper describes logical addresses as `1..N`; the implementation uses the
-equivalent zero-based representation `0..N-1`.
-
-| Profile | Correctness operations | Warm-up per variant | Measurement per variant | Purpose                  |
-| ------- | ---------------------: | ------------------: | ----------------------: | ------------------------ |
-| `quick` |                100,000 |              10,000 |                 100,000 | Pipeline smoke test only |
-| `full`  |             10,000,000 |       1,000,000,000 |          10,000,000,000 | Paper-scale evaluation   |
-
-The full profile can take hours or days. It is protected by a second explicit
-`--confirm-full` flag and is never selected by default.
-
-## Dataset and figure mapping
-
-| Dataset command | Variants generated                                                        | Used by paper image                                                           |
-| --------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `uniform-z`     | Uniform `Z=3,4,5,6`                                                       | `figZ3-6_rate.png`; Z=4/Z=5 baselines in two other figures                    |
-| `single-layer`  | `Z=5`, except layer `S in {0..14}` has capacity 4                         | `figZ45-Zmid_rate.png`, `tableZ5x0-14_counts.png`; `S=14` is also leaf size 4 |
-| `leaf-size`     | Internal layers have capacity 5; leaf layer 14 has capacity 0, 1, 2, or 3 | `figZ5sL0-4_rate.png`                                                         |
-
-For `figZ5sL0-4_rate.png`, leaf size 4 reuses `single-layer/s14.log`, and
-leaf size 5 reuses the `uniform-z/z5.log` baseline. This avoids repeating two
-paper-scale simulations.
-
-The source image named `tableZ5x0-14_counts.png` plots probabilities despite
-the historical `_counts` suffix; the filename is retained to match the paper.
-
-## Build
-
-Requirements:
-
-- GNU Make and a C++20 compiler (GCC 10 or newer recommended).
-- OpenMP only for the optional parallel executable.
-- Python 3.9+ and Matplotlib for figure generation.
-
-The bundled spdlog is built once as a compiled static library. Application
-sources are compiled into separate object files, so incremental builds do not
-recompile spdlog.
-
-```bash
-# Serial executable: build/oram-emulator.exe
-make -j4
-
-# Optional OpenMP executable: build/oram-emulator-omp.exe
-make -j4 omp
+```sh
+docker build --pull --tag lporam-ae:latest .
 ```
 
-The `.exe` suffix is used consistently on every platform; it does not imply
-that the executable requires Windows.
+Run the complete reduced-size validation and retain its results on the host:
 
-## Safe quick validation
-
-Running the executable without arguments only prints help. To run all reduced
-datasets and generate all four smoke-test figures with one command:
-
-```bash
-./runme.sh
+```sh
+mkdir -p artifact-output
+docker run --rm --init \
+  --volume "$(pwd)/artifact-output:/artifact/artifact-output" \
+  lporam-ae:latest quick
 ```
 
-Equivalent explicit commands are:
+A successful run ends with:
 
-```bash
-build/oram-emulator.exe --experiment self-test --profile quick
-build/oram-emulator.exe --experiment uniform-z --profile quick
-build/oram-emulator.exe --experiment single-layer --profile quick
-build/oram-emulator.exe --experiment leaf-size --profile quick
+```text
+PASS: LPORAM quick artifact workflow completed successfully.
 ```
 
-Use `--seed N` to select a recorded seed and `--output DIR` to place logs in a
-different directory.
+The quick run is a smoke test of every stage. It uses 1,000,000 measured
+accesses per emulator variant.
 
-## Full paper-scale execution
+The output layout is:
 
-Run each non-overlapping dataset once, preferably with the OpenMP executable:
-
-```bash
-make omp
-build/oram-emulator-omp.exe --experiment uniform-z --profile full --confirm-full
-build/oram-emulator-omp.exe --experiment single-layer --profile full --confirm-full
-build/oram-emulator-omp.exe --experiment leaf-size --profile full --confirm-full
+```text
+artifact-output/quick/
+|-- bound-finder/
+|   |-- bound_finder
+|   `-- table.tex
+`-- oram-emulator/
+    |-- logs/
+    |   |-- uniform-z/       # z3.log ... z6.log
+    |   |-- single-layer/    # s0.log ... s14.log
+    |   `-- leaf-size/       # leaf0.log ... leaf3.log
+    `-- reproduced/
+        |-- figZ3-6_rate.png
+        |-- figZ45-Zmid_rate.png
+        |-- figZ5sL0-4_rate.png
+        `-- tableZ5x0-14_counts.png
 ```
 
-The OpenMP executable runs the independent variants inside each dataset in
-parallel. Dataset commands remain sequential, so logs and figures retain the
-same grouping as the serial workflow. Set `OMP_NUM_THREADS=N` to control
-experiment concurrency; the `JOBS` variable controls compilation only.
+## Artifact-to-result map
 
-These commands are documentation, not part of the quick validation procedure.
-The guarded one-command equivalents are `./runme.sh full --confirm-full` and
-`./runme.ps1 -Profile full -ConfirmFull`.
+| Component or dataset | Role                                                         | Produced result                                                     |
+| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `BoundFinder`        | Enumerates feasible `t` values for each bucket configuration | LaTeX theoretical-bound table                                       |
+| `uniform-z`          | Uniform `Z = 3, 4, 5, 6`                                     | `figZ3-6_rate.png`; Z=4 and Z=5 baselines                           |
+| `single-layer`       | `Z = 5`, with one layer `S = 0..14` reduced to 4             | `figZ45-Zmid_rate.png`, `tableZ5x0-14_counts.png`; leaf-size-4 data |
+| `leaf-size`          | Internal `Z = 5`, leaf capacity 0, 1, 2, or 3                | Part of `figZ5sL0-4_rate.png`                                       |
 
-## Generate figures
+The leaf-capacity figure reuses `single-layer/s14.log` for capacity 4 and
+`uniform-z/z5.log` for capacity 5. This prevents duplicate paper-scale runs.
+The four images under `ORAMEmulator/img/` are author-supplied paper references;
+new results are written under `artifact-output`, never over those references.
 
-Install the plotting dependency in a virtual environment:
+## Quick and full profiles
 
-```bash
-python3 -m pip install -r requirements.txt
-python3 res.py --logs-root logs --output-dir reproduced
+| Profile | Correctness operations | Warm-up per variant | Measurements per variant | Intended use                            |
+| ------- | ---------------------: | ------------------: | -----------------------: | --------------------------------------- |
+| `quick` |              1,000,000 |             100,000 |                1,000,000 | Complete pipeline and format validation |
+| `full`  |             10,000,000 |       1,000,000,000 |           10,000,000,000 | Paper-scale result reproduction         |
+
+Both profiles use `N = 2^15 = 32768`, layers `0..14`, seed `0`, uniformly
+random warm-up addresses, and deterministic round-robin measurement addresses.
+Each log records the effective parameters.
+
+Quick correctness and speed tests each perform 1,000,000 operations. The
+top-level quick runner uses the serial executable. The full runner first runs
+the quick self-test (1,000,000 operations), then the full datasets; the
+10,000,000 correctness count above applies when invoking the executable's
+full self-test directly.
+
+The full profile performs billions of accesses and may take hours or days. It
+is guarded against accidental execution. After planning sufficient compute and
+storage, run:
+
+```sh
+docker run --rm --init \
+  --volume "$(pwd)/artifact-output:/artifact/artifact-output" \
+  lporam-ae:latest full --confirm-full
 ```
 
-On Windows, `py` can be used in place of `python3`. `res.py` exits with a
-non-zero status if a required log or final histogram is missing. It writes:
+Set `JOBS` to control compilation parallelism, for example `--env JOBS=8`.
+Inside the container, the full profile uses the OpenMP build for independent
+variants within each dataset. The `uniform-z`, `single-layer`, and `leaf-size`
+datasets still run sequentially in that order. Thread count can be limited with
+`--env OMP_NUM_THREADS=8`; `JOBS` does not control experiment threads.
 
-- `reproduced/figZ3-6_rate.png`
-- `reproduced/figZ45-Zmid_rate.png`
-- `reproduced/figZ5sL0-4_rate.png`
-- `reproduced/tableZ5x0-14_counts.png`
+## Native execution (without Docker)
 
-Quick-profile figures will have short tails because they contain only 100,000
-measurements. They verify plumbing and labels, not agreement with the
-paper-scale distributions.
+Requirements are a POSIX shell, GNU Make, `diff`, a C++20 compiler, Python
+3.9+, and Matplotlib. Install the Python dependency, then use the same runner:
 
-## Source layout
+```sh
+python3 -m pip install -r ORAMEmulator/requirements.txt
+./runme.sh quick
+```
 
-- `ORAM/`: header-only ORAM implementation.
-- `Experiment/00-selfTest.cpp`: correctness comparison against plain memory.
-- `Experiment/01-Zeq3456.cpp`: uniform-Z dataset.
-- `Experiment/02-Z45.cpp`: single-layer and leaf-capacity datasets.
-- `res.py`: deterministic log parser and four-figure generator.
-- `runme.sh`, `runme.ps1`: guarded quick/full orchestration.
-- `img/`: reference images used in the paper.
-- `logs/`: generated histogram logs.
-- `3rd_lib/spdlog-1.15.3/`: vendored logging dependency and license.
+To place outputs elsewhere:
 
-`log2csv.py`, `analysisSingle.py`, and `comp.py` are retained legacy analysis
-utilities; they are not used by the paper-figure reproduction path above.
+```sh
+ARTIFACT_OUTPUT_DIR=/path/to/results JOBS=8 ./runme.sh quick
+```
+
+Component-specific details and individual experiment commands are documented
+in `BoundFinder/README.md` and `ORAMEmulator/README.md`.
+
+## Source inventory
+
+- `Dockerfile`: Debian-based reproducible build and runtime environment.
+- `runme.sh`: guarded top-level build, execution, collection, and verification.
+- `BoundFinder/`: theoretical-bound source, reference table, and local runner.
+- `ORAMEmulator/`: C++ simulator, plotting code, vendored spdlog, reference
+  images, and component-level runners.
+
+## Troubleshooting
+
+- **The container is killed:** increase Docker's memory allocation to at least
+  4 GiB or lower OpenMP concurrency for a full run.
+- **Full run is refused:** the exact second argument `--confirm-full` is
+  intentionally required.
