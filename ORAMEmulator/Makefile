@@ -2,9 +2,11 @@ CXX ?= g++
 AR ?= ar
 BUILD_DIR ?= build
 CXXFLAGS ?= -O3
+# spdlog requires thread support during both compilation and linking.
+THREAD_FLAGS ?= -pthread
 CPPFLAGS = -I./3rd_lib/spdlog-1.15.3/include -DSPDLOG_COMPILED_LIB
 WARNFLAGS = -Wall -Wextra -Wpedantic
-COMMON_FLAGS = -std=c++20 $(CPPFLAGS) $(WARNFLAGS) $(CXXFLAGS) -MMD -MP
+COMMON_FLAGS = -std=c++20 $(CPPFLAGS) $(WARNFLAGS) $(CXXFLAGS) $(THREAD_FLAGS) -MMD -MP
 
 APP_SOURCES = main.cpp \
 	Experiment/experiment.cpp \
@@ -32,10 +34,10 @@ all: $(BUILD_DIR)/oram-emulator.exe
 omp: $(BUILD_DIR)/oram-emulator-omp.exe
 
 $(BUILD_DIR)/oram-emulator.exe: $(APP_OBJECTS) $(SPDLOG_LIBRARY)
-	$(CXX) $(APP_OBJECTS) $(SPDLOG_LIBRARY) -o $@
+	$(CXX) $(APP_OBJECTS) $(SPDLOG_LIBRARY) $(THREAD_FLAGS) -o $@
 
 $(BUILD_DIR)/oram-emulator-omp.exe: $(OMP_OBJECTS) $(SPDLOG_LIBRARY)
-	$(CXX) $(OMP_OBJECTS) $(SPDLOG_LIBRARY) -fopenmp -o $@
+	$(CXX) $(OMP_OBJECTS) $(SPDLOG_LIBRARY) $(THREAD_FLAGS) -fopenmp -o $@
 
 $(SPDLOG_LIBRARY): $(SPDLOG_OBJECTS)
 	$(AR) rcs $@ $^

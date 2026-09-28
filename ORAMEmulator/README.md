@@ -58,6 +58,12 @@ The bundled spdlog is built once as a compiled static library. Application
 sources are compiled into separate object files, so incremental builds do not
 recompile spdlog.
 
+The Makefile passes `-pthread` during both compilation and linking for spdlog's
+thread support, including in the serial executable. This dependency is separate
+from the optional OpenMP parallelism. `THREAD_FLAGS` can be overridden for
+toolchains that use different thread options; overriding `CXXFLAGS` retains the
+default thread flags.
+
 ```bash
 # Serial executable: build/oram-emulator.exe
 make -j4
