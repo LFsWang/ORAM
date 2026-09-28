@@ -113,8 +113,7 @@ same grouping as the serial workflow. Set `OMP_NUM_THREADS=N` to control
 experiment concurrency; the `JOBS` variable controls compilation only.
 
 These commands are documentation, not part of the quick validation procedure.
-The guarded one-command equivalents are `./runme.sh full --confirm-full` and
-`./runme.ps1 -Profile full -ConfirmFull`.
+The guarded one-command equivalents are `./runme.sh full --confirm-full`.
 
 ## Generate figures
 
@@ -144,7 +143,7 @@ paper-scale distributions.
 - `Experiment/01-Zeq3456.cpp`: uniform-Z dataset.
 - `Experiment/02-Z45.cpp`: single-layer and leaf-capacity datasets.
 - `res.py`: deterministic log parser and four-figure generator.
-- `runme.sh`, `runme.ps1`: guarded quick/full orchestration.
+- `runme.sh`: guarded quick/full orchestration.
 - `img/`: reference images used in the paper.
 - `logs/`: generated histogram logs.
 - `3rd_lib/spdlog-1.15.3/`: vendored logging dependency and license.
