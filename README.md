@@ -5,6 +5,13 @@ There are two programs in this package:
 - ORAMEmulator : A Path ORAM implementation for our experiments.
 - BoundFinder : A tool for enumerating the parameter `t` to find theoretical bounds.
 
+## authors
+
+- Syaheer Altaf (National Tsing Hua University)
+- Hsin-Pei Han (National Tsing Hua University)
+- Wing-Kai Hon (National Tsing Hua University)
+- Wang-Yang Li (National Tsing Hua University)
+
 ## Quick start with Docker
 
 ### Prerequisites
