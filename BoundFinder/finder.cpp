@@ -56,31 +56,38 @@ std::optional<Result> solver(vector<int> Z, double t) {
 
 struct ResultRow {
     Result R;
-    double MaxT;
-    double MinT;
+    int MaxTick;
+    int MinTick;
 };
 
+constexpr int ScanScale = 1000000;
+constexpr int TicksPerMilli = ScanScale / 1000;
+
 std::optional<ResultRow> solver(vector<int> Z) {
-    double MaxT = NAN, MinT = NAN;
-    double gap = 1e-6, t = 0;
-    double ln2 = log(2.0);
-    while (t < ln2) {
+    int MaxTick = -1, MinTick = -1;
+    const double ln2 = log(2.0);
+    for (int tick = 1; tick / double(ScanScale) < ln2; ++tick) {
+        const double t = tick / double(ScanScale);
         if (auto R = solver(Z, t); R.has_value()) {
-            MaxT = fmax(MaxT, t);
-            MinT = fmin(MinT, t);
+            MaxTick = tick;
+            if (MinTick < 0)
+                MinTick = tick;
         }
-        t += gap;
     }
 
-    if (isnan(MaxT))
+    if (MaxTick < 0)
         return {};
-    double tg = std::trunc(MaxT * 1000.0) / 1000.0;
-    tg = fmax(MinT, tg);
+    // Round on the integer grid, avoiding floating-point drift at decimals.
+    const int selectedTick = max(MinTick, MaxTick / TicksPerMilli * TicksPerMilli);
+    auto selected = solver(Z, selectedTick / double(ScanScale));
+    // A rounded point need not be feasible if the feasible set has gaps.
+    if (!selected)
+        selected = solver(Z, MaxTick / double(ScanScale));
 
     ResultRow R;
-    R.R = solver(Z, tg).value();
-    R.MaxT = MaxT;
-    R.MinT = MinT;
+    R.R = selected.value();
+    R.MaxTick = MaxTick;
+    R.MinTick = MinTick;
     return R;
 }
 
@@ -113,10 +120,6 @@ double avgZ(vector<int> Z) {
 
 double Up(double V) {
     return (std::ceil(V * 1000)) / 1000;
-}
-
-double Down(double V) {
-    return (std::floor(V * 1000)) / 1000;
 }
 
 int main() {
@@ -157,7 +160,16 @@ int main() {
             cout << fixed << setprecision(4);
             cout << avgZ(conf) << " & ";
             cout << fixed << setprecision(3);
-            cout << "$[" << Up(R.MinT) << "," << Down(R.MaxT) << "]$" << " & ";
+            const int minMilli = (R.MinTick + TicksPerMilli - 1) / TicksPerMilli;
+            const int maxMilli = R.MaxTick / TicksPerMilli;
+            if (minMilli <= maxMilli) {
+                cout << "$[" << minMilli / 1000.0 << "," << maxMilli / 1000.0 << "]$";
+            } else {
+                // Preserve narrow intervals instead of printing reversed endpoints.
+                cout << setprecision(6) << "$[" << R.MinTick / double(ScanScale)
+                     << "," << R.MaxTick / double(ScanScale) << "]$" << setprecision(3);
+            }
+            cout << " & ";
             cout << "$" << Up(R.R.C) << "\\times " << Up(R.R.et) << "^R$";
         } else {
             cout << R"(\multicolumn{3}{c}{divergent})";
@@ -166,7 +178,7 @@ int main() {
         cout << R"( \\)";
         if (Res.has_value()) { // Debug
             auto R = Res.value();
-            cout << "% " << R.R.t;
+            cout << "% " << setprecision(6) << R.R.t;
         }
 
         cout << "\n";

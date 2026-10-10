@@ -50,12 +50,18 @@ For each listed bucket configuration `Z`, the program scans
 conditions implemented by `solver(Z, t)` and reports:
 
 1. the weighted average bucket capacity `avg.Z`;
-2. the minimum and maximum feasible values of `t`; and
+2. the scanned feasible interval, rounded inward to three decimal places; and
 3. a bound of the form `C * (e^-t)^R`.
 
 The reported value of `t` used for the bound is the largest feasible value
 rounded down to three decimal places (and never below the minimum feasible
-value). `divergent` means that no feasible value was found on the scan grid.
+value). The scan and decimal truncation use integer grid indices to avoid
+accumulated floating-point rounding errors. The selected point is checked again;
+if it is infeasible, the largest feasible grid point is used instead. Intervals
+containing no three-decimal grid point are displayed with six decimals to avoid
+reversed endpoints. The comment at the end of each row records the selected `t`
+with six decimals. Both bound factors are rounded upward to three decimals.
+`divergent` means that no feasible value was found on the scan grid.
 The generated file is a LaTeX table fragment rather than a complete document.
 
 The configurations used for the paper are the `Cases` vector in `main()`.
