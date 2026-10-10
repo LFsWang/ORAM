@@ -115,6 +115,10 @@ double Up(double V) {
     return (std::ceil(V * 1000)) / 1000;
 }
 
+double Down(double V) {
+    return (std::floor(V * 1000)) / 1000;
+}
+
 int main() {
     cout << fixed << setprecision(4);
 
@@ -153,7 +157,7 @@ int main() {
             cout << fixed << setprecision(4);
             cout << avgZ(conf) << " & ";
             cout << fixed << setprecision(3);
-            cout << "$[" << R.MinT << "," << R.MaxT << "]$" << " & ";
+            cout << "$[" << Up(R.MinT) << "," << Down(R.MaxT) << "]$" << " & ";
             cout << "$" << Up(R.R.C) << "\\times " << Up(R.R.et) << "^R$";
         } else {
             cout << R"(\multicolumn{3}{c}{divergent})";
